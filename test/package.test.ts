@@ -10,3 +10,23 @@ test("declares an independent public plugin package", async () => {
   expect(JSON.stringify(pkg)).not.toContain("@kilocode/")
   expect(JSON.stringify(pkg)).not.toContain("workspace:")
 })
+
+test("publishes only plugin runtime artifacts", async () => {
+  const proc = Bun.spawn(["npm", "pack", "--dry-run", "--json"], { cwd: import.meta.dir + "/..", stdout: "pipe" })
+  const text = await new Response(proc.stdout).text()
+  expect(await proc.exited).toBe(0)
+  const files = (JSON.parse(text)[0].files as { path: string }[]).map((item) => item.path).sort()
+  expect(files).toEqual([
+    "LICENSE",
+    "README.md",
+    "package.json",
+    "src/context.ts",
+    "src/events.ts",
+    "src/index.ts",
+    "src/learner.ts",
+    "src/plugin.ts",
+    "src/report.ts",
+    "src/schema.ts",
+    "src/store.ts",
+  ])
+})
