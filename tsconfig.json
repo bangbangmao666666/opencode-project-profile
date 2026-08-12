@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "lib": ["es2023", "dom", "dom.iterable"],
+    "types": ["bun", "node"]
+  },
+  "include": ["src/**/*", "test/**/*"]
+}
