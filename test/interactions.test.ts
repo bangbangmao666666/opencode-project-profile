@@ -182,5 +182,5 @@ test("selects pending requests and summarizes only aggregate interaction data", 
 
   const rows = await loadInteractions(root)
   expect((await selectInteractions(root, { pending: true })).map((item) => item.type)).toEqual(["permission_opened"])
-  expect(summarizeInteractions(rows, now + 12 * 60 * 60 * 1_000)).toEqual({ total: 3, openQuestions: 0, openPermissions: 1, latest: now + 2 })
+  expect(summarizeInteractions(rows, now + 12 * 60 * 60 * 1_000)).toEqual({ total: 3, submittedPrompts: 0, cancelledDrafts: 0, correctionPairs: 0, openQuestions: 0, openPermissions: 1, latest: now + 2 })
 })

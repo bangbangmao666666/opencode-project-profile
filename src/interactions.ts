@@ -32,7 +32,10 @@ export function interactionsPath(root: string) {
 }
 
 export async function loadInteractions(root: string): Promise<Interaction[]> {
-  const text = await Bun.file(interactionsPath(root)).text().catch(() => "")
+  const text = await fs.readFile(interactionsPath(root), "utf8").catch((err: NodeJS.ErrnoException) => {
+    if (err.code === "ENOENT") return ""
+    throw err
+  })
   return text.split("\n").flatMap((line) => {
     if (!line.trim()) return []
     try {
@@ -80,6 +83,9 @@ export function summarizeInteractions(records: Interaction[], _now = Date.now())
   const latest = records.reduce<number | undefined>((value, item) => Math.max(value ?? 0, Date.parse(item.at)), undefined)
   return {
     total: records.length,
+    submittedPrompts: records.filter((item) => item.type === "prompt_submitted").length,
+    cancelledDrafts: records.filter((item) => item.type === "draft_cancelled").length,
+    correctionPairs: records.filter((item) => item.type === "draft_corrected").length,
     openQuestions: rows.filter((item) => item.type === "question_opened").length,
     openPermissions: rows.filter((item) => item.type === "permission_opened").length,
     latest,
