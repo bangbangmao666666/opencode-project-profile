@@ -1,6 +1,6 @@
 {
   "name": "opencode-project-profile",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Local workspace preference learning plugin for OpenCode-compatible hosts",
   "type": "module",
   "license": "MIT",
@@ -36,6 +36,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/bangbangmao666666/opencode-project-profile"
+    "url": "git+https://github.com/bangbangmao666666/opencode-project-profile.git"
   }
 }
