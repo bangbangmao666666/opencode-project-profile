@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test"
+import { afterEach, expect, spyOn, test } from "bun:test"
 import fs from "fs/promises"
 import {
   forgetInteractions,
@@ -45,6 +45,75 @@ test("retains the newest 1000 records inside 90 days per workspace", async () =>
   const rows = await loadInteractions(root)
   expect(rows).toHaveLength(1_000)
   expect(rows.at(-1)?.type).toBe("prompt_submitted")
+})
+
+test("uses the current time for retention instead of a future appended record", async () => {
+  const root = await tmpdir(dirs)
+  const now = Date.parse("2026-08-13T00:00:00.000Z")
+  await fs.mkdir(`${root}/.kilo`, { recursive: true })
+  await Bun.write(interactionsPath(root), `${JSON.stringify({ version: 1, id: crypto.randomUUID(), at: new Date(now - 89 * 24 * 60 * 60 * 1_000).toISOString(), sessionID: "ses_1", type: "prompt_submitted", text: "recent", kind: "prompt" })}\n`)
+
+  const date = Date.now
+  Date.now = () => now
+  try {
+    await recordInteraction(root, { version: 1, at: "2030-01-01T00:00:00.000Z", sessionID: "ses_1", type: "prompt_submitted", text: "future", kind: "prompt" })
+  } finally {
+    Date.now = date
+  }
+
+  expect((await loadInteractions(root)).filter((item) => item.type === "prompt_submitted").map((item) => item.text)).toEqual(["recent", "future"])
+})
+
+test("retains the actual newest 1000 records when input is unordered", async () => {
+  const root = await tmpdir(dirs)
+  const now = Date.parse("2026-08-13T00:00:00.000Z")
+  const rows = Array.from({ length: 1_000 }, (_, index) => ({
+    version: 1 as const,
+    id: crypto.randomUUID(),
+    at: new Date(now - index * 1_000).toISOString(),
+    sessionID: "ses_1",
+    type: "prompt_submitted" as const,
+    text: String(index),
+    kind: "prompt" as const,
+  }))
+  await fs.mkdir(`${root}/.kilo`, { recursive: true })
+  await Bun.write(interactionsPath(root), [...rows].reverse().map((item) => JSON.stringify(item)).join("\n") + "\n")
+  await recordInteraction(root, { version: 1, at: new Date(now - 2_000_000).toISOString(), sessionID: "ses_1", type: "prompt_submitted", text: "backdated", kind: "prompt" })
+
+  const retained = await loadInteractions(root)
+  expect(retained).toHaveLength(1_000)
+  expect(retained.filter((item) => item.type === "prompt_submitted").map((item) => item.text)).toEqual([...rows].reverse().map((item) => item.text))
+})
+
+test("continues queued writes after an earlier write fails", async () => {
+  const root = await tmpdir(dirs)
+  const mkdir = spyOn(fs, "mkdir")
+  mkdir.mockImplementationOnce(async () => { throw new Error("failed write") })
+  try {
+    const first = recordInteraction(root, { version: 1, at: "2026-08-13T00:00:00.000Z", sessionID: "ses_1", type: "draft_cancelled", text: "failed" })
+    const second = recordInteraction(root, { version: 1, at: "2026-08-13T00:00:01.000Z", sessionID: "ses_1", type: "draft_cancelled", text: "saved" })
+    const failed = expect(first).rejects.toThrow("failed write")
+    const saved = expect(second).resolves.toMatchObject({ text: "saved" })
+
+    await failed
+    await saved
+  } finally {
+    mkdir.mockRestore()
+  }
+  expect((await loadInteractions(root)).filter((item) => item.type === "draft_cancelled").map((item) => item.text)).toEqual(["saved"])
+})
+
+test("preserves every concurrently recorded interaction", async () => {
+  const root = await tmpdir(dirs)
+  await Promise.all(Array.from({ length: 20 }, (_, index) => recordInteraction(root, {
+    version: 1,
+    at: new Date(Date.parse("2026-08-13T00:00:00.000Z") + index).toISOString(),
+    sessionID: "ses_1",
+    type: "draft_cancelled",
+    text: String(index),
+  })))
+
+  expect((await loadInteractions(root)).filter((item) => item.type === "draft_cancelled").map((item) => item.text).sort()).toEqual(Array.from({ length: 20 }, (_, index) => String(index)).sort())
 })
 
 test("skips malformed rows and removes only requested records", async () => {

@@ -48,7 +48,10 @@ export async function recordInteraction(root: string, record: InteractionInput) 
   const item = Interaction.parse({ ...record, id: record.id ?? crypto.randomUUID() })
   await update(root, async () => {
     const rows = [...await loadInteractions(root), item]
-    return rows.filter((value) => Date.parse(value.at) >= Date.parse(item.at) - AGE).slice(-MAX)
+    return rows
+      .filter((value) => Date.parse(value.at) >= Date.now() - AGE)
+      .sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || a.id.localeCompare(b.id))
+      .slice(-MAX)
   })
   return item
 }
@@ -95,7 +98,7 @@ function pending(records: Interaction[]) {
 
 async function update(root: string, change: () => Promise<Interaction[]>) {
   const previous = queues.get(root) ?? Promise.resolve()
-  const next = previous.then(async () => {
+  const next = previous.catch(() => undefined).then(async () => {
     const file = interactionsPath(root)
     await fs.mkdir(path.dirname(file), { recursive: true })
     const rows = await change()
