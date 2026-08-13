@@ -87,8 +87,8 @@ test("retains the actual newest 1000 records when input is unordered", async () 
 
 test("continues queued writes after an earlier write fails", async () => {
   const root = await tmpdir(dirs)
-  const mkdir = spyOn(fs, "mkdir")
-  mkdir.mockImplementationOnce(async () => { throw new Error("failed write") })
+  const write = spyOn(Bun, "write")
+  write.mockRejectedValueOnce(new Error("failed write"))
   try {
     const first = recordInteraction(root, { version: 1, at: "2026-08-13T00:00:00.000Z", sessionID: "ses_1", type: "draft_cancelled", text: "failed" })
     const second = recordInteraction(root, { version: 1, at: "2026-08-13T00:00:01.000Z", sessionID: "ses_1", type: "draft_cancelled", text: "saved" })
@@ -98,7 +98,7 @@ test("continues queued writes after an earlier write fails", async () => {
     await failed
     await saved
   } finally {
-    mkdir.mockRestore()
+    write.mockRestore()
   }
   expect((await loadInteractions(root)).filter((item) => item.type === "draft_cancelled").map((item) => item.text)).toEqual(["saved"])
 })
