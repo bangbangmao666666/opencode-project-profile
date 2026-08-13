@@ -49,6 +49,34 @@ test("retains the newest 1000 records inside 90 days per workspace", async () =>
   expect(rows.at(-1)?.type).toBe("prompt_submitted")
 })
 
+test("retains an appended record when 1000 existing records have the same timestamp", async () => {
+  const root = await tmpdir(dirs)
+  const at = new Date(Date.now()).toISOString()
+  await fs.mkdir(`${root}/.kilo`, { recursive: true })
+  await Bun.write(interactionsPath(root), Array.from({ length: 1_000 }, (_, index) => JSON.stringify({
+    version: 1,
+    id: `ffffffff-ffff-4fff-8fff-${index.toString().padStart(12, "0")}`,
+    at,
+    sessionID: "ses_1",
+    type: "prompt_submitted",
+    text: String(index),
+    kind: "prompt",
+  })).join("\n") + "\n")
+  await recordInteraction(root, {
+    version: 1,
+    id: "00000000-0000-4000-8000-000000000000",
+    at,
+    sessionID: "ses_1",
+    type: "prompt_submitted",
+    text: "appended",
+    kind: "prompt",
+  })
+
+  const rows = await loadInteractions(root)
+  expect(rows).toHaveLength(1_000)
+  expect(rows.at(-1)?.id).toBe("00000000-0000-4000-8000-000000000000")
+})
+
 test("uses the current time for retention instead of a future appended record", async () => {
   const root = await tmpdir(dirs)
   const now = Date.now()

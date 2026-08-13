@@ -50,7 +50,7 @@ export async function recordInteraction(root: string, record: InteractionInput) 
     const rows = [...await loadInteractions(root), item]
     return rows
       .filter((value) => Date.parse(value.at) >= Date.now() - AGE)
-      .sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || a.id.localeCompare(b.id))
+      .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
       .slice(-MAX)
   })
   return item

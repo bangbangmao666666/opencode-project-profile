@@ -23,6 +23,7 @@ test("publishes only plugin runtime artifacts", async () => {
     "src/context.ts",
     "src/events.ts",
     "src/index.ts",
+    "src/interactions.ts",
     "src/learner.ts",
     "src/plugin.ts",
     "src/report.ts",
