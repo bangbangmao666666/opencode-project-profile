@@ -32,3 +32,10 @@ test("publishes only plugin runtime artifacts", async () => {
     "src/store.ts",
   ])
 })
+
+test("documents interaction storage and explicit data tools", async () => {
+  const readme = await Bun.file(new URL("../README.md", import.meta.url)).text()
+  expect(readme).toContain(".kilo/project-profile-interactions.jsonl")
+  expect(readme).toContain("project_profile_interactions")
+  expect(readme).toContain("90 days")
+})
