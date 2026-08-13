@@ -53,9 +53,9 @@ export const server: Plugin = async (input) => {
     async "chat.message"(event, output) {
       const value = text(output.parts as { type: string; text?: string }[])
       await skip(async () => {
-        await recordInteraction(input.worktree, { version: 1, at: new Date().toISOString(), sessionID: event.sessionID, type: "prompt_submitted", text: value, kind: "prompt" })
         const draft = pending.get(event.sessionID)
         pending.delete(event.sessionID)
+        await recordInteraction(input.worktree, { version: 1, at: new Date().toISOString(), sessionID: event.sessionID, type: "prompt_submitted", text: value, kind: "prompt" })
         if (draft) {
           const age = Date.now() - draft.at
           if (age >= 0 && age <= 10_000) await recordInteraction(input.worktree, { version: 1, at: new Date().toISOString(), sessionID: event.sessionID, type: "draft_corrected", cancelledAt: new Date(draft.at).toISOString(), cancelledText: draft.text, correctedText: value })

@@ -34,6 +34,22 @@ test("records a submitted prompt and one matching cancelled-draft correction", a
   expect((await loadInteractions(root)).map((item) => item.type)).toEqual(["draft_cancelled", "prompt_submitted", "draft_corrected"])
 })
 
+test("consumes a cancelled draft when the first subsequent prompt write fails", async () => {
+  const root = await tmpdir(dirs)
+  const hooks = await server({ worktree: root } as never)
+  const clock = spyOn(Date, "now").mockReturnValue(Date.parse("2026-08-13T00:00:10.000Z"))
+  await hooks.event!({ event: { type: "prompt.draft.cancelled", properties: { sessionID: "ses_1", text: "teh plan", at: "2026-08-13T00:00:00.000Z" } } as never })
+  const write = spyOn(Bun, "write").mockRejectedValueOnce(new Error("interaction write failed"))
+  try {
+    await hooks["chat.message"]!({ sessionID: "ses_1" } as never, { parts: [{ type: "text", text: "the plan" }] } as never)
+    await hooks["chat.message"]!({ sessionID: "ses_1" } as never, { parts: [{ type: "text", text: "the revised plan" }] } as never)
+  } finally {
+    write.mockRestore()
+    clock.mockRestore()
+  }
+  expect((await loadInteractions(root)).filter((item) => item.type === "draft_corrected")).toEqual([])
+})
+
 test("does not pair a correction after 10,000 milliseconds or across sessions", async () => {
   const root = await tmpdir(dirs)
   const hooks = await server({ worktree: root } as never)
