@@ -1,10 +1,12 @@
 import type { Metrics } from "./events"
+import { interactionReport } from "./interaction-report"
+import type { Interaction } from "./interactions"
 import type { Profile } from "./schema"
 
 const percent = (value: number | undefined) => value === undefined ? "unavailable" : `${(value * 100).toFixed(1)}%`
 const date = (value: number | undefined) => value === undefined ? "none" : new Date(value).toISOString()
 
-export function report(profile: Profile | undefined, metrics: Metrics) {
+export function report(profile: Profile | undefined, metrics: Metrics, interactions?: Interaction[]) {
   const preferences = profile?.preferences ?? []
   return [
     `Project profile metrics: ${metrics.range.label}`,
@@ -22,5 +24,6 @@ export function report(profile: Profile | undefined, metrics: Metrics) {
     `Correction rate: ${percent(metrics.correctionRate)}`,
     `Latest injection: ${date(metrics.latest.injected)}`,
     `Latest correction: ${date(metrics.latest.corrected)}`,
+    ...(interactions ? [interactionReport(interactions)] : []),
   ].join("\n")
 }
